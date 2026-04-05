@@ -14,4 +14,7 @@ const applicationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Prevent duplicate applications to same team + same role
+applicationSchema.index({ user: 1, team: 1, roleApplied: 1 }, { unique: true });
+
 export default mongoose.model("Application", applicationSchema);
