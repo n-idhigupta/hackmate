@@ -7,6 +7,7 @@ import authRoutes from "./routes/authRoutes.js";
 import teamRoutes from "./routes/teamRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 dotenv.config();
 connectDB();
@@ -20,6 +21,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/teams", teamRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/admin", adminRoutes);
 
 const PORT = process.env.PORT || 5000;
 

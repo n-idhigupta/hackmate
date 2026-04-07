@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import NotificationBell from "./NotificationBell";
 
 function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -23,12 +23,13 @@ function Navbar() {
         <Link to="/">Feed</Link>
         {user && <Link to="/create">Create</Link>}
         {user && <Link to="/manage">Manage</Link>}
+        {user?.role === "admin" && <Link to="/admin">Admin</Link>}
       </nav>
 
       <div className="nav-right">
         {user && <NotificationBell />}
 
-        {!user ? (
+        {loading ? null : !user ? (
           <>
             <Link to="/register" className="btn btn-orange">
               Register to Start
