@@ -15,9 +15,11 @@ function Feed() {
   const fetchTeams = async () => {
     try {
       setLoading(true);
+
       const res = await API.get(
         `/teams?search=${search}&role=${role}&department=${department}`
       );
+
       setTeams(res.data);
     } catch (error) {
       console.error("Failed to fetch teams", error);
@@ -99,7 +101,9 @@ function Feed() {
       ) : teams.length === 0 ? (
         <div className="empty-box">
           <h3>No matching teams found.</h3>
-          <p className="meta-text">Try changing your search or create one yourself.</p>
+          <p className="meta-text">
+            Try changing your search or create one yourself.
+          </p>
         </div>
       ) : (
         <div className="team-grid">

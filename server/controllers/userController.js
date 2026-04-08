@@ -1,19 +1,30 @@
 import User from "../models/User.js";
-import Application from "../models/Application.js";
-import Team from "../models/Team.js";
 
-export const getProfile = async (req, res) => {
+export const getUserProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select("-password");
+    const user = await User.findById(req.user._id).select("-password");
 
-    const applications = await Application.find({ user: req.user.id })
-      .populate("team", "hackathonName")
-      .sort({ createdAt: -1 });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-    const createdTeams = await Team.find({ leader: req.user.id }).sort({ createdAt: -1 });
-
-    res.status(200).json({ user, applications, createdTeams });
+    res.status(200).json({
+      user: {
+        _id: user._id,
+        fullName: user.fullName,
+        uid: user.uid,
+        email: user.email,
+        phone: user.phone,
+        department: user.department,
+        year: user.year,
+        github: user.github,
+        linkedin: user.linkedin,
+        role: user.role,
+        experiencePoints: user.experiencePoints || 0,
+      },
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Profile Error:", error);
+    res.status(500).json({ message: "Failed to fetch profile" });
   }
 };

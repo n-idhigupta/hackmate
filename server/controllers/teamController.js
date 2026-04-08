@@ -3,6 +3,9 @@ import Application from "../models/Application.js";
 import User from "../models/User.js";
 import Notification from "../models/Notification.js";
 
+/* =========================
+   CREATE TEAM
+========================= */
 export const createTeam = async (req, res) => {
   try {
     const { hackathonName, problemStatement, deadline, roles } = req.body;
@@ -11,22 +14,34 @@ export const createTeam = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
+    const formattedRoles = roles.map((role) => ({
+      roleName: role.roleName,
+      requiredCount: Number(role.requiredCount),
+    }));
+
     const team = await Team.create({
       hackathonName,
       problemStatement,
       deadline,
-      roles,
-      leader: req.user.id
+      roles: formattedRoles,
+      leader: req.user.id,
     });
 
-    await User.findByIdAndUpdate(req.user.id, { role: "leader" });
+    await User.findByIdAndUpdate(req.user.id, {
+      role: "leader",
+      $inc: { experiencePoints: 1 },
+    });
 
     res.status(201).json(team);
   } catch (error) {
+    console.error("Create Team Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
+/* =========================
+   GET TEAMS
+========================= */
 export const getTeams = async (req, res) => {
   try {
     const { search = "", role = "", department = "" } = req.query;
@@ -36,10 +51,11 @@ export const getTeams = async (req, res) => {
       .sort({ createdAt: -1 });
 
     if (search) {
-      teams = teams.filter((team) =>
-        team.hackathonName.toLowerCase().includes(search.toLowerCase()) ||
-        team.problemStatement.toLowerCase().includes(search.toLowerCase()) ||
-        team.leader?.fullName?.toLowerCase().includes(search.toLowerCase())
+      teams = teams.filter(
+        (team) =>
+          team.hackathonName.toLowerCase().includes(search.toLowerCase()) ||
+          team.problemStatement.toLowerCase().includes(search.toLowerCase()) ||
+          team.leader?.fullName?.toLowerCase().includes(search.toLowerCase())
       );
     }
 
@@ -57,27 +73,54 @@ export const getTeams = async (req, res) => {
       );
     }
 
-    res.status(200).json(teams);
+    const updatedTeams = await Promise.all(
+      teams.map(async (team) => {
+        const teamObj = team.toObject();
+
+        teamObj.roles = await Promise.all(
+          team.roles.map(async (role) => {
+            const acceptedCount = await Application.countDocuments({
+              team: team._id,
+              roleApplied: role.roleName,
+              status: "accepted",
+            });
+
+            return {
+              ...role.toObject(),
+              filledCount: acceptedCount,
+            };
+          })
+        );
+
+        return teamObj;
+      })
+    );
+
+    res.status(200).json(updatedTeams);
   } catch (error) {
+    console.error("Get Teams Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
+/* =========================
+   APPLY TO ROLE
+========================= */
 export const applyToRole = async (req, res) => {
   try {
-    const { roleApplied } = req.body;
     const { teamId } = req.params;
+    const roleApplied = req.body.roleApplied || req.body.role;
 
     if (!roleApplied) {
       return res.status(400).json({ message: "Role is required" });
     }
 
-    const team = await Team.findById(teamId);
+    const team = await Team.findById(teamId).populate("leader", "fullName");
     if (!team) {
       return res.status(404).json({ message: "Team not found" });
     }
 
-    if (team.leader.toString() === req.user.id) {
+    if (team.leader._id.toString() === req.user.id.toString()) {
       return res.status(400).json({ message: "You cannot apply to your own team" });
     }
 
@@ -89,7 +132,7 @@ export const applyToRole = async (req, res) => {
     const existing = await Application.findOne({
       user: req.user.id,
       team: teamId,
-      roleApplied
+      roleApplied,
     });
 
     if (existing) {
@@ -99,7 +142,7 @@ export const applyToRole = async (req, res) => {
     const acceptedCount = await Application.countDocuments({
       team: teamId,
       roleApplied,
-      status: "accepted"
+      status: "accepted",
     });
 
     if (acceptedCount >= selectedRole.requiredCount) {
@@ -109,20 +152,25 @@ export const applyToRole = async (req, res) => {
     const application = await Application.create({
       user: req.user.id,
       team: teamId,
-      roleApplied
+      roleApplied,
+      status: "pending",
     });
 
     const applicant = await User.findById(req.user.id);
 
     await Notification.create({
-      user: team.leader,
+      user: team.leader._id,
       message: `${applicant.fullName} applied for ${roleApplied} in ${team.hackathonName}`,
       type: "application",
-      link: "/manage"
+      link: "/manage",
     });
 
-    res.status(201).json(application);
+    res.status(201).json({
+      message: "Application submitted successfully",
+      application,
+    });
   } catch (error) {
+    console.error("Apply To Role Error:", error);
     if (error.code === 11000) {
       return res.status(400).json({ message: "You already applied for this role" });
     }
@@ -130,22 +178,41 @@ export const applyToRole = async (req, res) => {
   }
 };
 
+/* =========================
+   GET LEADER APPLICATIONS
+========================= */
 export const getLeaderApplications = async (req, res) => {
   try {
-    const teams = await Team.find({ leader: req.user.id });
-    const teamIds = teams.map((team) => team._id);
+    console.log("Logged in Leader ID:", req.user.id);
 
-    const applications = await Application.find({ team: { $in: teamIds } })
-      .populate("user", "fullName email department year github linkedin")
+    const teams = await Team.find({ leader: req.user.id });
+    console.log("Leader Teams:", teams);
+
+    const teamIds = teams.map((team) => team._id);
+    console.log("Leader Team IDs:", teamIds);
+
+    const applications = await Application.find({
+      team: { $in: teamIds },
+    })
+      .populate(
+        "user",
+        "fullName email department year github linkedin experiencePoints"
+      )
       .populate("team", "hackathonName roles leader")
       .sort({ createdAt: -1 });
 
+    console.log("Applications Found:", applications);
+
     res.status(200).json(applications);
   } catch (error) {
+    console.error("Get Leader Applications Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
+/* =========================
+   UPDATE APPLICATION STATUS
+========================= */
 export const updateApplicationStatus = async (req, res) => {
   try {
     const { status } = req.body;
@@ -161,21 +228,30 @@ export const updateApplicationStatus = async (req, res) => {
     }
 
     if (application.team.leader.toString() !== req.user.id) {
-      return res.status(403).json({ message: "Not authorized to manage this application" });
+      return res.status(403).json({
+        message: "Not authorized to manage this application",
+      });
+    }
+
+    const roleConfig = application.team.roles.find(
+      (r) => r.roleName === application.roleApplied
+    );
+
+    if (!roleConfig) {
+      return res.status(400).json({ message: "Role config not found" });
     }
 
     if (status === "accepted") {
-      const roleConfig = application.team.roles.find(
-        (r) => r.roleName === application.roleApplied
-      );
-
       const acceptedCount = await Application.countDocuments({
         team: application.team._id,
         roleApplied: application.roleApplied,
-        status: "accepted"
+        status: "accepted",
       });
 
-      if (acceptedCount >= roleConfig.requiredCount) {
+      if (
+        acceptedCount >= roleConfig.requiredCount &&
+        application.status !== "accepted"
+      ) {
         return res.status(400).json({ message: "This role is already full" });
       }
     }
@@ -192,17 +268,21 @@ export const updateApplicationStatus = async (req, res) => {
       user: application.user,
       message: `Your application for ${application.roleApplied} in ${application.team.hackathonName} was ${status}`,
       type: "status",
-      link: "/profile"
+      link: "/profile",
     });
 
     if (oldStatus !== "accepted" && status === "accepted") {
       await User.findByIdAndUpdate(application.user, {
-        $inc: { experiencePoints: 10 }
+        $inc: { experiencePoints: 1 },
       });
     }
 
-    res.status(200).json(application);
+    res.status(200).json({
+      message: `Application ${status} successfully`,
+      application,
+    });
   } catch (error) {
+    console.error("Update Application Status Error:", error);
     res.status(500).json({ message: error.message });
   }
 };

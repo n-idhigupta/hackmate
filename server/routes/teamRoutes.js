@@ -1,19 +1,26 @@
 import express from "express";
-import authMiddleware from "../middleware/authMiddleware.js";
 import {
   createTeam,
   getTeams,
   applyToRole,
   getLeaderApplications,
-  updateApplicationStatus
+  updateApplicationStatus,
 } from "../controllers/teamController.js";
+import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+/* =========================
+   IMPORTANT: KEEP SPECIFIC ROUTES FIRST
+========================= */
+
+// Leader dashboard routes
+router.get("/manage/applications", protect, getLeaderApplications);
+router.put("/manage/applications/:appId", protect, updateApplicationStatus);
+
+// Team routes
+router.post("/", protect, createTeam);
 router.get("/", getTeams);
-router.post("/", authMiddleware, createTeam);
-router.post("/:teamId/apply", authMiddleware, applyToRole);
-router.get("/leader/applications", authMiddleware, getLeaderApplications);
-router.patch("/application/:appId", authMiddleware, updateApplicationStatus);
+router.post("/:teamId/apply", protect, applyToRole);
 
 export default router;

@@ -2,20 +2,20 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 function ProtectedRoute({ children }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
-  const token = localStorage.getItem("token");
-
-  if (!token) {
-    return <Navigate to="/login" replace />;
+  if (loading) {
+    return (
+      <div className="page-shell">
+        <div className="hero-card">
+          <h2>Loading...</h2>
+          <p className="meta-text">Please wait while we verify your session.</p>
+        </div>
+      </div>
+    );
   }
 
-  // Wait until user is fetched
-  if (token && !user) {
-    return <div className="page-shell"><p>Loading...</p></div>;
-  }
-
-  return children;
+  return user ? children : <Navigate to="/login" />;
 }
 
 export default ProtectedRoute;

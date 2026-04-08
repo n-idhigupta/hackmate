@@ -1,3 +1,4 @@
+import TeamChat from "./pages/TeamChat";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Feed from "./pages/Feed";
@@ -17,7 +18,14 @@ function App() {
         <Route path="/" element={<Feed />} />
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
-
+<Route
+  path="/chat/:teamId"
+  element={
+    <ProtectedRoute>
+      <TeamChat />
+    </ProtectedRoute>
+  }
+/>
         <Route
           path="/create"
           element={

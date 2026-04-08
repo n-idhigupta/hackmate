@@ -12,6 +12,8 @@ function Login() {
     password: ""
   });
 
+  const [submitting, setSubmitting] = useState(false);
+
   const handleChange = (e) => {
     setFormData((prev) => ({
       ...prev,
@@ -21,43 +23,65 @@ function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
 
     try {
       const res = await API.post("/auth/login", formData);
-      login(res.data.token, res.data.user);
-      alert("Login successful!");
-      navigate("/profile");
+
+      const profile = await login(res.data.token);
+
+      if (profile) {
+        navigate("/");
+      } else {
+        alert("Login succeeded but profile could not load.");
+      }
     } catch (error) {
+      console.error("Login failed:", error);
       alert(error.response?.data?.message || "Login failed");
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <div className="form-card">
-      <h2>Login to HackMate</h2>
+    <div className="page-shell form-shell">
+      <div className="form-card">
+        <h2>Login to HackMate</h2>
 
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label>Gmail</label>
-          <input type="email" name="email" value={formData.email} onChange={handleChange} required />
-        </div>
+        <form onSubmit={handleSubmit} className="form-grid">
+          <div className="form-group full">
+            <label>Email</label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-        <div className="form-group">
-          <label>Password</label>
-          <input type="password" name="password" value={formData.password} onChange={handleChange} required />
-        </div>
+          <div className="form-group full">
+            <label>Password</label>
+            <input
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+            />
+          </div>
 
-        <button type="submit" className="btn btn-orange">
-          Login
-        </button>
-      </form>
+          <div className="form-actions full">
+            <button type="submit" className="btn btn-orange" disabled={submitting}>
+              {submitting ? "Logging in..." : "Login"}
+            </button>
 
-      <p className="small-text">
-        Don’t have an account?{" "}
-        <Link to="/register" className="small-link">
-          Register now
-        </Link>
-      </p>
+            <Link to="/register" className="btn btn-grey">
+              Create Account
+            </Link>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

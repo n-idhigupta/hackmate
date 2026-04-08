@@ -1,108 +1,116 @@
-import { useEffect, useState } from "react";
-import API from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 function Profile() {
-  const [profileData, setProfileData] = useState(null);
+  const { user, loading } = useAuth();
 
-  const fetchProfile = async () => {
-    try {
-      const res = await API.get("/users/profile");
-      setProfileData(res.data);
-    } catch (error) {
-      console.error("Failed to fetch profile", error);
-    }
-  };
-
-  useEffect(() => {
-    fetchProfile();
-  }, []);
-
-  if (!profileData) {
-    return <p>Loading profile...</p>;
+  if (loading) {
+    return (
+      <div className="page-shell">
+        <div className="hero-card">
+          <h2>Loading Profile...</h2>
+          <p className="meta-text">Please wait while we load your profile.</p>
+        </div>
+      </div>
+    );
   }
 
-  const { user, applications, createdTeams } = profileData;
+  if (!user) {
+    return (
+      <div className="page-shell">
+        <div className="hero-card">
+          <h2>Profile not found</h2>
+          <p className="meta-text">Please log in again.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h2 className="section-title">Your Profile</h2>
+    <div className="page-shell">
+      <div className="hero-card">
+        <p className="eyebrow">Your HackMate Profile</p>
+        <h1>{user?.fullName}</h1>
+        <p className="hero-copy">
+          Manage your student identity, links, and progress on HackMate.
+        </p>
+      </div>
 
-      <div className="profile-grid">
-        <div className="profile-card">
-          <h3>{user.fullName}</h3>
-          <p className="meta-text"><strong>UID:</strong> {user.uid}</p>
-          <p className="meta-text"><strong>Email:</strong> {user.email}</p>
-          <p className="meta-text"><strong>Phone:</strong> {user.phone}</p>
-          <p className="meta-text"><strong>Department:</strong> {user.department}</p>
-          <p className="meta-text"><strong>Year:</strong> {user.year}</p>
-          <p className="meta-text"><strong>Role:</strong> {user.role}</p>
-          <p className="meta-text"><strong>Experience Points:</strong> {user.experiencePoints}</p>
-        </div>
+      <div className="dashboard-card">
+        <h3>Profile Information</h3>
 
-        <div className="profile-card">
-          <h3>Professional Links</h3>
-          <p className="meta-text">
-            <strong>GitHub:</strong>{" "}
-            {user.github ? (
-              <a href={user.github} target="_blank" rel="noreferrer" className="small-link">
-                Open GitHub
-              </a>
-            ) : (
-              "Not provided"
-            )}
-          </p>
+        <div className="profile-grid">
+          <div className="profile-stat">
+            <p>Full Name</p>
+            <h2>{user?.fullName || "N/A"}</h2>
+          </div>
 
-          <p className="meta-text">
-            <strong>LinkedIn:</strong>{" "}
-            {user.linkedin ? (
-              <a href={user.linkedin} target="_blank" rel="noreferrer" className="small-link">
-                Open LinkedIn
-              </a>
-            ) : (
-              "Not provided"
-            )}
-          </p>
+          <div className="profile-stat">
+            <p>UID</p>
+            <h2>{user?.uid || "N/A"}</h2>
+          </div>
+
+          <div className="profile-stat">
+            <p>Email</p>
+            <h2>{user?.email || "N/A"}</h2>
+          </div>
+
+          <div className="profile-stat">
+            <p>Phone</p>
+            <h2>{user?.phone || "N/A"}</h2>
+          </div>
+
+          <div className="profile-stat">
+            <p>Department</p>
+            <h2>{user?.department || "N/A"}</h2>
+          </div>
+
+          <div className="profile-stat">
+            <p>Year</p>
+            <h2>{user?.year || "N/A"}</h2>
+          </div>
+
+          <div className="profile-stat">
+            <p>Platform Role</p>
+            <h2>{user?.role || "member"}</h2>
+          </div>
+
+          <div className="profile-stat">
+            <p>Hackathons Participated</p>
+            <h2>{user?.experiencePoints ?? 0}</h2>
+          </div>
         </div>
       </div>
 
-      <div className="profile-card" style={{ marginTop: "1.5rem" }}>
-        <h3>Your Applications</h3>
+      <div className="dashboard-card">
+        <h3>Links</h3>
 
-        {applications.length === 0 ? (
-          <p className="meta-text">You have not applied to any teams yet.</p>
-        ) : (
-          applications.map((app) => (
-            <div key={app._id} className="role-item">
-              <div>
-                <strong>{app.team?.hackathonName}</strong>
-                <p className="meta-text">Role: {app.roleApplied}</p>
-              </div>
-              <span className={`status-badge ${app.status}`}>
-                {app.status.toUpperCase()}
-              </span>
-            </div>
-          ))
-        )}
-      </div>
+        <div className="profile-grid">
+          <div className="profile-stat">
+            <p>GitHub</p>
+            <h2 style={{ fontSize: "1rem", wordBreak: "break-word" }}>
+              {user?.github ? (
+                <a href={user.github} target="_blank" rel="noreferrer">
+                  Open GitHub
+                </a>
+              ) : (
+                "Not Added"
+              )}
+            </h2>
+          </div>
 
-      <div className="profile-card" style={{ marginTop: "1.5rem" }}>
-        <h3>Your Created Teams</h3>
-
-        {createdTeams.length === 0 ? (
-          <p className="meta-text">You haven’t created any teams yet.</p>
-        ) : (
-          createdTeams.map((team) => (
-            <div key={team._id} className="role-item">
-              <div>
-                <strong>{team.hackathonName}</strong>
-                <p className="meta-text">
-                  Deadline: {new Date(team.deadline).toLocaleDateString()}
-                </p>
-              </div>
-              <span className="status-badge pending">LEADER</span>
-            </div>
-          ))
-        )}
+          <div className="profile-stat">
+            <p>LinkedIn</p>
+            <h2 style={{ fontSize: "1rem", wordBreak: "break-word" }}>
+              {user?.linkedin ? (
+                <a href={user.linkedin} target="_blank" rel="noreferrer">
+                  Open LinkedIn
+                </a>
+              ) : (
+                "Not Added"
+              )}
+            </h2>
+          </div>
+        </div>
       </div>
     </div>
   );
